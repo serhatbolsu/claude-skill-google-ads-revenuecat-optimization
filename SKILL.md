@@ -14,6 +14,7 @@ Scripts (persistent, do not rewrite): `SKILL_DIR="$HOME/.claude/skills/google-ad
 - `scripts/period_compare.py` — Google spend × RC subs over named periods; organic baseline; marginal cost per extra sub
 - `scripts/asset_compare.py` — asset report (or before/after pair): shares, CPA, installs/1k, purchases/1M, P(0) for zero-purchase assets, ABSORBER / UNSERVED / WORST flags
 - `scripts/rc_fetch.py` — RevenueCat Paid Subscriptions (chart `actives_new`) per day per country → normalized CSV; key from `$RC_API_KEY` only
+- `scripts/rc_funnel.py` — where purchases start: new users → paywall reach → paid subs per entry point (custom attribute such as `paywall_source`), per period
 - `scripts/csvio.py` — readers for Google Ads exports (UTF-16 TSV or CSV), RevenueCat exports, normalized CSVs
 
 References: `references/gaql-queries.md` (GAQL per analysis), `references/revenuecat.md`
@@ -51,7 +52,8 @@ Always pull **≥3 weeks before the first change** you are judging, and the zero
 3. **Reconcile Google vs RC** — Google in-app actions vs RC subs per period. Google > RC ⇒ over-crediting (modeled conversions, trial starts counted). Recent days with Google ≪ RC ⇒ conversion lag; drop the latest 3–4 days from any verdict (re-pull later: Google back-fills 2–3×).
 4. **Where the money went** — network split (Search vs Display/YouTube) and `asset_compare.py` before/after. Look for an **ABSORBER**: an asset that takes a large share of impressions with installs/1k and CPA worse than the rest (typical after adding a broad or curiosity headline, or a new image). Check whether total impressions *grew* or only *shifted*.
 5. **Hourly** (optional) — when does the budget run out? Map the account time zone to the market's local time before interpreting.
-6. **Experiments** — if a paywall/trial experiment runs, estimate how it moves *direct* vs *trial* subs (e.g. trial variant: fewer immediate paid subs, more trials converting days later) and judge by **RC total paid subs, lagged**, not direct subs.
+6. **Where purchases start** — `rc_funnel.py` for the market and cohort. Split paid subs by the entry point the app records at purchase (`paywall_source` / placement): typically one screen (e.g. the onboarding paywall) carries most purchases. Check reach (did fewer users get there?) separately from paid per viewer (did that screen convert worse?). Only attribute a drop to an app change if that change touches the entry point that actually carries purchases — a change to a rarely used screen or layout variant can't explain a large drop. Compare the same entry point across markets/channels.
+7. **Experiments** — if a paywall/trial experiment runs, estimate how it moves *direct* vs *trial* subs (e.g. trial variant: fewer immediate paid subs, more trials converting days later) and judge by **RC total paid subs, lagged**, not direct subs.
 
 ## 4. Recommend
 

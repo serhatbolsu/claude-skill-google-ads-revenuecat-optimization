@@ -38,6 +38,13 @@ date,total_paid,direct,trial_conversions,intro_offers
 2026-10-01,42,37,3,2
 ```
 
+## Entry points and paywall reach
+
+- Custom subscriber attributes (set by the app, e.g. `paywall_source`, `paywall_type`, `onboarding_version`) segment and filter charts as `external_subscriber_attributes:<name>`. Purchases from before the app set the attribute come back blank — compare only later periods.
+- `paywall_encounter` → measures `Installs`, `Paywall Encounters (1 day)`, rate: the reach of any paywall per new user.
+- `paywall_conversion` is only populated for RevenueCat-built paywalls; with custom paywalls it returns zeros. Use encounters + `actives_new` by entry-point attribute instead (`rc_funnel.py`).
+- `customers_new` segments by `first_app_version` (not `app_version`), which also dates a release: the first day new users install it.
+
 ## UI export fallback
 
 Charts → Paid Subscriptions → filter Country → daily → Export CSV. The file has two header
