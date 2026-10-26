@@ -13,6 +13,7 @@ Google, never as the business result.
 Scripts (persistent, do not rewrite): `SKILL_DIR="$HOME/.claude/skills/google-ads-revenuecat-optimization"`
 - `scripts/period_compare.py` — Google spend × RC subs over named periods; organic baseline; marginal cost per extra sub
 - `scripts/asset_compare.py` — asset report (or before/after pair): shares, CPA, installs/1k, purchases/1M, P(0) for zero-purchase assets, ABSORBER / UNSERVED / WORST flags
+- `scripts/rc_fetch.py` — RevenueCat Paid Subscriptions (chart `actives_new`) per day per country → normalized CSV; key from `$RC_API_KEY` only
 - `scripts/csvio.py` — readers for Google Ads exports (UTF-16 TSV or CSV), RevenueCat exports, normalized CSVs
 
 References: `references/gaql-queries.md` (GAQL per analysis), `references/revenuecat.md`
@@ -34,7 +35,7 @@ under the job/tmp dir and run scripts with `python3 -I <script> <path>`.
 
 **Preferred — MCP servers** (see README for setup):
 - Google Ads MCP `search` with the GAQL in `references/gaql-queries.md`: daily campaign metrics, hourly, network split, asset view, change events, country split. Write results to normalized CSVs (`date,cost,impressions,installs,in_app_actions,clicks`; asset rows with `Asset,Asset type,Performance,Impr.,Cost,Installs,In-app actions`) so the scripts can read them.
-- RevenueCat MCP `get-chart-data` (or REST `GET /v2/projects/{project_id}/charts/{chart_name}`) for paid subscriptions per day **filtered to the campaign's countries**; `get-experiment-results` for running experiments. Discover the chart name and filters with `get-chart-options-schema` / the `/options` endpoint — don't guess.
+- RevenueCat: `RC_API_KEY=… scripts/rc_fetch.py --country US --start … --end … --out rc.csv` (chart `actives_new` = dashboard "Paid Subscriptions", split into direct / trial conversions / intro offers), or the RevenueCat MCP `get-chart-data`. `get-experiment-results` for running experiments. Other charts: `rc_fetch.py --list-charts`. **Use one RevenueCat source per comparison** — API and dashboard CSV exports of the same chart can differ by several percent, so thresholds set on one don't transfer to the other.
 
 **Fallback — user exports** (ask for exactly these):
 - Google Ads: time series **with Cost, Impressions, Installs, In-app actions** (daily); Asset details report for each window compared; Campaign report segmented by Network; Change history; per-country (Locations) for multi-country campaigns

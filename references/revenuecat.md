@@ -18,9 +18,16 @@ it can never be split by campaign, which is why the organic baseline matters.
 - `GET …/metrics/overview`, `GET …/metrics/revenue?start_date&end_date` — permission `charts_metrics:overview:read`
 - Rate limit: 25 requests/minute across Charts & Metrics. Key: a **v2 secret key** with read-only charts permissions; keep it in the environment or the MCP config, never in files or the repo.
 
-The chart-name enum is long; find the paid-subscriptions / new-paid chart with
-`get-chart-options-schema` or by listing options, then cache the name in the project's
-notes. Pull **daily**, **filtered to the campaign's countries**, and ask for the breakdown
+The dashboard "Paid Subscriptions" chart is **`actives_new`** (measures: Trial Conversions,
+Intro Offers, Direct Subscriptions, Product Changes, Resubscriptions, Total Paid
+Subscriptions). An invalid chart name returns the full list in the error message
+(`rc_fetch.py --list-charts`). `realtime=true` (default) returns `values` as
+`{cohort, measure, segment, value, incomplete}` objects; `realtime=false` returns rows of
+`[timestamp, m0, m1, …]` with `measures: null`. Segments include `attribution_campaign` /
+`attribution_source` — populated only when an attribution integration feeds RevenueCat.
+
+API vs dashboard export: the same chart can differ by a few percent (country/time-zone
+definitions). Keep one source per comparison and restate thresholds when switching. Pull **daily**, **filtered to the campaign's countries**, and ask for the breakdown
 into direct subscriptions / trial conversions / intro offers where the chart offers it.
 
 Write the result as a normalized CSV for `period_compare.py`:

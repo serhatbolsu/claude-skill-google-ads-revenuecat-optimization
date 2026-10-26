@@ -83,6 +83,9 @@ python3 -I $S/period_compare.py --google timeseries.csv --rc revenuecat.csv \
 python3 -I $S/asset_compare.py --before assets_wk1.csv --before-days 7 --after assets_wk2.csv --after-days 7
 ```
 
+`rc_fetch.py` pulls RevenueCat Paid Subscriptions per day for one or more countries
+(`RC_API_KEY=sk_… python3 -I $S/rc_fetch.py --country US --start 2026-09-01 --end 2026-10-20 --out us.csv`).
+
 `period_compare.py` estimates organic subs/day from zero-spend days (override with
 `--organic`) and prints the marginal cost of each extra subscription between periods.
 `asset_compare.py` flags ABSORBER (high share, worse installs/1k and CPA), UNSERVED (<3%
@@ -100,5 +103,5 @@ SKILL.md                  workflow Claude follows
 references/playbook.md    decision rules and pitfalls
 references/gaql-queries.md GAQL for each analysis
 references/revenuecat.md  Charts API / MCP usage, experiments
-scripts/                  period_compare.py, asset_compare.py, csvio.py
+scripts/                  rc_fetch.py, period_compare.py, asset_compare.py, csvio.py
 ```
