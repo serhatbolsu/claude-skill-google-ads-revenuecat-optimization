@@ -4,6 +4,9 @@
   RC_API_KEY=sk_... rc_fetch.py --country US --start 2026-09-01 --end 2026-10-20 --out us.csv
   RC_API_KEY=sk_... rc_fetch.py --country CA,GB,DE,AU ...      # several countries summed
   RC_API_KEY=sk_... rc_fetch.py --list-charts                   # valid chart names
+  RC_API_KEY=sk_... rc_fetch.py --country BR --attribution "No Attribution" ...
+      # only subs RevenueCat did NOT attribute to another source (e.g. drop "Apple Search Ads");
+      # with no organic traffic this is the Google Ads cohort. --attribution list → print sources.
 
 Output columns: date,total_paid,direct,trial_conversions,intro_offers,product_changes,resubscriptions
 — readable by period_compare.py --rc.
@@ -12,8 +15,9 @@ The key is a RevenueCat v2 secret key with `charts_metrics:charts:read`; it is r
 $RC_API_KEY only and never written anywhere. --project defaults to the only project the
 key can see.
 
-Note: API numbers can differ by a few % from a dashboard CSV export of the same chart
-(filter/time-zone definitions). Never mix the two sources inside one comparison.
+Note: if API totals run above a dashboard CSV export, check attribution first — exports
+filtered to "No Attribution" leave out e.g. Apple Search Ads subs. Never mix sources (or
+attribution scopes) inside one comparison.
 """
 
 import argparse
@@ -57,6 +61,7 @@ def main():
     p.add_argument("--project")
     p.add_argument("--chart", default="actives_new")
     p.add_argument("--list-charts", action="store_true")
+    p.add_argument("--attribution", help='attribution_source segment to keep, e.g. "No Attribution"; "list" prints them')
     a = p.parse_args()
 
     key = os.environ.get("RC_API_KEY")
@@ -83,12 +88,26 @@ def main():
         sys.exit("--country, --start, --end and --out are required")
     params = {"start_date": a.start, "end_date": a.end, "resolution": "0", "realtime": "true",
               "filters": json.dumps([{"name": "country", "values": a.country.split(",")}])}
+    if a.attribution:
+        params["segment"] = "attribution_source"
     d = get(f"/projects/{project}/charts/{a.chart}", key, params)
+
+    want = 0
+    if a.attribution:
+        segs = [s["display_name"] for s in d.get("segments") or []]
+        if a.attribution == "list" or a.attribution not in segs:
+            totals = (d.get("summary") or {}).get("total") or {}
+            for s_ in segs:
+                print(f"{s_}: {totals.get(s_, {}).get('Total Paid Subscriptions', '?')} paid subs")
+            if a.attribution != "list":
+                sys.exit(f"attribution source {a.attribution!r} not found")
+            return
+        want = segs.index(a.attribution)
 
     names = [m["display_name"] for m in d.get("measures") or []]
     rows = {}
     for v in d.get("values") or []:
-        if not isinstance(v, dict) or v.get("segment", 0) != 0:
+        if not isinstance(v, dict) or v.get("segment", 0) != want:
             continue
         day = dt.datetime.fromtimestamp(v["cohort"], dt.timezone.utc).date()
         col = MEASURES.get(names[v["measure"]])
@@ -105,6 +124,7 @@ def main():
             w.writerow([day.isoformat()] + [int(rows[day].get(c, 0)) for c in cols])
     inc = [d.isoformat() for d, r in rows.items() if r.get("_incomplete")]
     print(f"{a.out}: {len(rows)} days, project {project}, countries {a.country}"
+          + (f", attribution {a.attribution!r}" if a.attribution else "")
           + (f"; incomplete (still filling): {', '.join(sorted(inc))}" if inc else ""))
 
 

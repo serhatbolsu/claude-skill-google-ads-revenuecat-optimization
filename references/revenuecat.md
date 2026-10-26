@@ -26,8 +26,10 @@ Subscriptions). An invalid chart name returns the full list in the error message
 `[timestamp, m0, m1, …]` with `measures: null`. Segments include `attribution_campaign` /
 `attribution_source` — populated only when an attribution integration feeds RevenueCat.
 
-API vs dashboard export: the same chart can differ by a few percent (country/time-zone
-definitions). Keep one source per comparison and restate thresholds when switching. Pull **daily**, **filtered to the campaign's countries**, and ask for the breakdown
+API vs dashboard export: when they differ, check the attribution scope first — an export
+filtered to "No Attribution" excludes Apple Search Ads (and other attributed) subs.
+`rc_fetch.py --attribution list` shows the split; `--attribution "No Attribution"` keeps the
+unattributed cohort (Google Ads + organic). Keep one scope per comparison. Pull **daily**, **filtered to the campaign's countries**, and ask for the breakdown
 into direct subscriptions / trial conversions / intro offers where the chart offers it.
 
 Write the result as a normalized CSV for `period_compare.py`:
