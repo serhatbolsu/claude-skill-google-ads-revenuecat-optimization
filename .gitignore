@@ -1,0 +1,9 @@
+*.csv
+*.tsv
+*.json
+!references/*.json
+data/
+exports/
+__pycache__/
+.DS_Store
+.env
