@@ -14,6 +14,16 @@ Learned from real reviews of target-CPA app campaigns. Numbers below are illustr
 - **Impressions vs installs.** Track installs per 1k impressions per asset and per period. A surge in impressions with flat installs is low-intent inventory, not growth.
 - **Small samples.** For a zero-purchase asset, expected = impressions × type-average purchases-per-impression; P(0) = e^-expected. ~7% is weak evidence; <1% is conclusive. Re-check at ~2× the data.
 
+## Diagnosing a drop (before recommending a pause or switch)
+
+- **Decompose**: RC subs/day = new users/day × purchases per new user. Pull `customers_new` and `actives_new` from RevenueCat for the campaign's cohort (country + `attribution_source`). Volume drops point at the campaign (budget, bids, inventory); conversion drops point at user quality *or* the app.
+- **Use another channel as a control.** Another attributed channel in the same market (e.g. Apple Search Ads) sees the same app but different ads. If its conversion moves with Google's on the same date, the cause is the app/paywall/config; if only Google's moves, it's the traffic.
+- **Use other markets as a control.** A release that hurts one market only points at market-specific config (offering, placement, experiment, localisation).
+- **Line up every timeline**: Google change history, app release adoption (`customers_new` by `first_app_version` shows the day a version goes live), RevenueCat experiments (start/stop, audiences, variant metadata) and offering mix per market (`actives_new` by `offering_identifier`).
+- **Audit experiments**: audiences pinned to one app version stop enrolling once users update; a variant whose metadata equals control measures noise (useful as an A/A: on ~500 users per arm, ±30% is noise).
+- **Don't switch campaigns for an app-side drop**: a fallback campaign sends users into the same paywall. Re-estimate its cost at today's conversion (its old installs/day × current purchases per new user), not its historical cost per sub.
+- **Per-asset quality**: installs per 1k impressions per asset before/after a change shows which images/descriptions Google moved impressions to — often older weak images, not only the new ones.
+
 ## Budget and target
 
 - **Find the plateau.** Plot subs/day against cost/day across periods. Beyond the point where subs stop rising, extra budget buys impressions (often Display) — marginal cost per extra sub can be 3–10× the average.
