@@ -48,6 +48,10 @@ def main():
             for k, x in v.items():
                 if x is not None:
                     acc[k] = acc.get(k, 0.0) + x
+    # API pulls omit zero-spend days; inside the pulled range a missing day means $0.
+    if g:
+        for d in days(min(g), max(g)):
+            g.setdefault(d, {"cost": 0.0, "impressions": 0.0, "installs": 0.0, "clicks": 0.0})
     rc = read_revenuecat_paid_subs(a.rc, a.rc_group)
 
     organic = a.organic
