@@ -9,6 +9,27 @@ App campaigns are `campaign.advertising_channel_type = 'MULTI_CHANNEL'`
 UI "Installs" ≈ `metrics.biddable_app_install_conversions`, UI "In-app actions" ≈
 `metrics.biddable_app_post_install_conversions` — verify against the UI for one day.
 
+## Without the MCP server: REST
+
+The same queries run over plain HTTPS with application-default credentials that carry the
+`https://www.googleapis.com/auth/adwords` scope (gcloud's own client is blocked for that
+scope; log in with your own Desktop OAuth client: `gcloud auth application-default login
+--client-id-file=client_secret.json --scopes=https://www.googleapis.com/auth/adwords,https://www.googleapis.com/auth/cloud-platform`).
+No developer token is needed since Sept 2026; the Cloud project is the access unit.
+
+```bash
+TOK=$(gcloud auth application-default print-access-token)
+curl -s -H "Authorization: Bearer $TOK" -H "x-goog-user-project: <cloud-project-id>" \
+  https://googleads.googleapis.com/v24/customers:listAccessibleCustomers
+curl -s -H "Authorization: Bearer $TOK" -H "x-goog-user-project: <cloud-project-id>" \
+  -H "Content-Type: application/json" [-H "login-customer-id: <manager-id>"] \
+  https://googleads.googleapis.com/v24/customers/<customer-id>/googleAds:search \
+  -d '{"query": "SELECT campaign.id, campaign.name FROM campaign"}'
+```
+403 "only approved for use with test accounts" → the Cloud project still needs Explorer /
+Basic / Standard access (apply in the Cloud console's Google Ads API page). Use the newest
+API version that answers (v24 in Oct 2026).
+
 ## Account basics
 
 ```sql
