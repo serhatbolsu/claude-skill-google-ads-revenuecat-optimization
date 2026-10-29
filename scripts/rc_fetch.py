@@ -11,9 +11,10 @@
 Output columns: date,total_paid,direct,trial_conversions,intro_offers,product_changes,resubscriptions
 — readable by period_compare.py --rc.
 
-The key is a RevenueCat v2 secret key with `charts_metrics:charts:read`; it is read from
-$RC_API_KEY only and never written anywhere. --project defaults to the only project the
-key can see.
+The key is a RevenueCat v2 secret key with `charts_metrics:charts:read`. It is read from
+$RC_API_KEY, else (macOS) from the login Keychain item with service `RC_API_KEY`
+(`security add-generic-password -a "$USER" -s RC_API_KEY -w <key>`), and never written
+anywhere by this script. --project defaults to the only project the key can see.
 
 Note: if API totals run above a dashboard CSV export, check attribution first — exports
 filtered to "No Attribution" leave out e.g. Apple Search Ads subs. Never mix sources (or
@@ -25,6 +26,7 @@ import csv
 import datetime as dt
 import json
 import os
+import subprocess
 import sys
 import urllib.error
 import urllib.parse
@@ -52,6 +54,16 @@ def get(path, key, params=None):
         sys.exit(f"RevenueCat {e.code} on {path}: {body[:500]}")
 
 
+def keychain_key():
+    if sys.platform != "darwin":
+        return None
+    try:
+        return subprocess.check_output(["security", "find-generic-password", "-s", "RC_API_KEY", "-w"],
+                                       text=True, stderr=subprocess.DEVNULL).strip() or None
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--country", help="ISO codes, comma-separated (e.g. US or CA,GB,DE,AU)")
@@ -64,9 +76,10 @@ def main():
     p.add_argument("--attribution", help='attribution_source segment to keep, e.g. "No Attribution"; "list" prints them')
     a = p.parse_args()
 
-    key = os.environ.get("RC_API_KEY")
+    key = os.environ.get("RC_API_KEY") or keychain_key()
     if not key:
-        sys.exit("set RC_API_KEY to a RevenueCat v2 secret key (read-only charts permission)")
+        sys.exit("set RC_API_KEY to a RevenueCat v2 secret key (read-only charts permission), "
+                 "or store it in the macOS Keychain under service RC_API_KEY")
 
     project = a.project
     if not project:

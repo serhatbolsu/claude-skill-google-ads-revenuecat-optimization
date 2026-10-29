@@ -31,6 +31,9 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from rc_fetch import keychain_key  # noqa: E402
+
 API = "https://api.revenuecat.com/v2"
 
 
@@ -72,7 +75,8 @@ def main():
     ap.add_argument("--json")
     a = ap.parse_args()
 
-    key = os.environ.get("RC_API_KEY") or sys.exit("set RC_API_KEY (RevenueCat v2 secret key, charts read)")
+    key = os.environ.get("RC_API_KEY") or keychain_key() or sys.exit(
+        "set RC_API_KEY (RevenueCat v2 secret key, charts read) or store it in the Keychain as RC_API_KEY")
     project = a.project
     if not project:
         req = urllib.request.Request(f"{API}/projects", headers={"Authorization": f"Bearer {key}"})

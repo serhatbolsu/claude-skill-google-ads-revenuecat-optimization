@@ -11,6 +11,9 @@ UI "Installs" ≈ `metrics.biddable_app_install_conversions`, UI "In-app actions
 
 ## Without the MCP server: REST
 
+`scripts/gads_fetch.py` wraps all of the queries below (status, daily, assets, network,
+geo, hourly, changes, raw `query`) and writes the normalized CSVs. The raw calls:
+
 The same queries run over plain HTTPS with application-default credentials that carry the
 `https://www.googleapis.com/auth/adwords` scope (gcloud's own client is blocked for that
 scope; log in with your own Desktop OAuth client: `gcloud auth application-default login
@@ -91,7 +94,12 @@ FROM campaign
 WHERE campaign.id = <ID> AND segments.date BETWEEN '<start>' AND '<end>'
 ```
 Compare a day before and after a suspected change. App campaigns have no ad schedule;
-the levers are budget and target.
+the levers are budget and target. `segments.hour` (like `geographic_view`) rejects the
+`biddable_app_*` metrics — use `metrics.conversions` (installs included). Hours are in the
+**account** time zone, and so is the daily budget reset: an account in another time zone
+than the market starts the market's "day" mid-afternoon or evening (e.g. Istanbul account,
+US campaign → the budget day starts 5 PM ET and runs out the next US midday). The time zone
+can't be changed after account creation.
 
 ## Asset performance (per window)
 
@@ -105,7 +113,9 @@ FROM ad_group_ad_asset_view
 WHERE campaign.id = <ID> AND segments.date BETWEEN '<start>' AND '<end>'
 ```
 Run once per window (e.g. the 7 days before a change and the 7 days after) and write each
-as an asset CSV for `asset_compare.py`. Asset metrics overlap across field types — never
+as an asset CSV for `asset_compare.py` (map `field_type` to Headline / Description / Image /
+Video and sum rows per asset text or ID — one asset appears once per ad group). Image and
+video `asset.id`s are API IDs, not the IDs the UI shows. Asset metrics overlap across field types — never
 add them up into a campaign total.
 
 ## Change history (last 30 days only)
@@ -122,6 +132,10 @@ LIMIT 1000
 `LIMIT` is required. Older history: ask for the UI Change history export.
 
 ## Country split (multi-country campaigns)
+
+`geographic_view` needs `campaign.id` in the SELECT when filtering on it, and **rejects the
+`biddable_app_*` metrics** — use `metrics.conversions`, which counts every biddable
+conversion (installs included), so compare countries by cost and share, not $/conv.
 
 ```sql
 SELECT geographic_view.country_criterion_id, geographic_view.location_type,

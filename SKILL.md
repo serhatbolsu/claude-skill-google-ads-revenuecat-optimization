@@ -14,6 +14,8 @@ Scripts (persistent, do not rewrite): `SKILL_DIR="$HOME/.claude/skills/google-ad
 - `scripts/period_compare.py` — Google spend × RC subs over named periods; organic baseline; marginal cost per extra sub
 - `scripts/asset_compare.py` — asset report (or before/after pair): shares, CPA, installs/1k, purchases/1M, P(0) for zero-purchase assets, ABSORBER / UNSERVED / WORST flags
 - `scripts/rc_fetch.py` — RevenueCat Paid Subscriptions (chart `actives_new`) per day per country → normalized CSV; key from `$RC_API_KEY` only
+- `scripts/gads_fetch.py` — Google Ads over REST (no MCP needed): status, daily / assets CSVs, network, geo, hourly, change history, raw GAQL
+- `scripts/rc_experiment.py` — RevenueCat Experiments: list (dates, enrollment, countries, which placements differ) and per-variant results by product
 - `scripts/rc_funnel.py` — where purchases start: new users → paywall reach → paid subs per entry point (custom attribute such as `paywall_source`), per period
 - `scripts/csvio.py` — readers for Google Ads exports (UTF-16 TSV or CSV), RevenueCat exports, normalized CSVs
 
@@ -34,16 +36,19 @@ under the job/tmp dir and run scripts with `python3 -I <script> <path>`.
 
 ## 2. Pull data
 
-**Preferred — MCP servers** (see README for setup):
-- Google Ads MCP `search` with the GAQL in `references/gaql-queries.md`: daily campaign metrics, hourly, network split, asset view, change events, country split. Write results to normalized CSVs (`date,cost,impressions,installs,in_app_actions,clicks`; asset rows with `Asset,Asset type,Performance,Impr.,Cost,Installs,In-app actions`) so the scripts can read them.
-- RevenueCat: `RC_API_KEY=… scripts/rc_fetch.py --country US --start … --end … --out rc.csv` (chart `actives_new` = dashboard "Paid Subscriptions", split into direct / trial conversions / intro offers), or the RevenueCat MCP `get-chart-data`. `get-experiment-results` for running experiments. Other charts: `rc_fetch.py --list-charts`. **Scope the RevenueCat cohort to the channel you judge**: `--attribution list` shows sources; when another paid channel is attributed (e.g. Apple Search Ads), use `--attribution "No Attribution"` (= Google + organic) so the other channel's subs don't flatter Google's cost per sub. Keep one source and one attribution scope per comparison — a total-vs-filtered mismatch looks like a 5–20% data gap.
+**Preferred — APIs** (see README for setup):
+- Google Ads: `scripts/gads_fetch.py` (REST, gcloud application-default credentials; account and Cloud project from `GOOGLE_ADS_CUSTOMER_ID` / `GOOGLE_CLOUD_PROJECT` or `--customer` / `--project`). `status` (status, budget, target), `daily --campaign ID --start --end --out g.csv` and `assets … --out a.csv` write the normalized CSVs that `period_compare.py` / `asset_compare.py` read; `network` / `geo --period label:start:end`, `hourly`, `changes`, `query "<GAQL>"` print tables. Start every review with `status` and `changes` — a budget or target change nobody mentioned is common. The Google Ads MCP `search` tool with the GAQL in `references/gaql-queries.md` works too; write its results to the same CSV shapes (`date,cost,impressions,installs,in_app_actions,clicks`; `Asset,Asset type,Performance,Impr.,Cost,Installs,In-app actions` with types Headline/Description/Image/Video).
+- **Recent Google days keep changing**: in-app actions back-fill for days to weeks. A read taken right after a window can show twice the real CPA — re-pull a window before re-judging it, and never compare a fresh export with an old one.
+- RevenueCat: `scripts/rc_fetch.py --country US --start … --end … --out rc.csv` (chart `actives_new` = dashboard "Paid Subscriptions", split into direct / trial conversions / intro offers), or the RevenueCat MCP `get-chart-data`. `rc_experiment.py` (or MCP `get-experiment-results`) for experiments — always list them for the window. Other charts: `rc_fetch.py --list-charts`. **Scope the RevenueCat cohort to the channel you judge**: `--attribution list` shows sources; when another paid channel is attributed (e.g. Apple Search Ads), use `--attribution "No Attribution"` (= Google + organic) so the other channel's subs don't flatter Google's cost per sub. The key comes from `$RC_API_KEY`, else the macOS Keychain item `RC_API_KEY`; never ask the user to paste it twice — offer to store it there. Keep one source and one attribution scope per comparison — a total-vs-filtered mismatch looks like a 5–20% data gap.
 
 **Fallback — user exports** (ask for exactly these):
 - Google Ads: time series **with Cost, Impressions, Installs, In-app actions** (daily); Asset details report for each window compared; Campaign report segmented by Network; Change history; per-country (Locations) for multi-country campaigns
 - RevenueCat: Charts → Paid Subscriptions, daily, filtered to the country/countries, CSV
 
 Always pull **≥3 weeks before the first change** you are judging, and the zero-spend days
-(pre-launch / paused) if any — they give the organic baseline.
+(pre-launch / paused) if any — they give the organic baseline. For a new campaign, the
+RevenueCat days **before its launch** in its countries are that baseline: a market where
+"No Attribution" is mostly Google elsewhere can still have several organic subs/day.
 
 ## 3. Analyze (in this order)
 
@@ -53,7 +58,7 @@ Always pull **≥3 weeks before the first change** you are judging, and the zero
 4. **Where the money went** — network split (Search vs Display/YouTube) and `asset_compare.py` before/after. Look for an **ABSORBER**: an asset that takes a large share of impressions with installs/1k and CPA worse than the rest (typical after adding a broad or curiosity headline, or a new image). Check whether total impressions *grew* or only *shifted*.
 5. **Hourly** (optional) — when does the budget run out? Map the account time zone to the market's local time before interpreting.
 6. **Where purchases start** — `rc_funnel.py` for the market and cohort. Split paid subs by the entry point the app records at purchase (`paywall_source` / placement): typically one screen (e.g. the onboarding paywall) carries most purchases. Check reach (did fewer users get there?) separately from paid per viewer (did that screen convert worse?). Only attribute a drop to an app change if that change touches the entry point that actually carries purchases — a change to a rarely used screen or layout variant can't explain a large drop. Compare the same entry point across markets/channels.
-7. **Experiments** — if a paywall/trial experiment runs, estimate how it moves *direct* vs *trial* subs (e.g. trial variant: fewer immediate paid subs, more trials converting days later) and judge by **RC total paid subs, lagged**, not direct subs.
+7. **Experiments** — `rc_experiment.py` for every experiment touching the market in the window (start / pause / stop dates, enrollment %). A trial-heavy variant raises *initial conversions* (trial starts — which Google counts as purchases when the trial start fires the ad event) while paid customers drop or arrive days later as trial conversions. So: Google's in-app actions and CPA look better while it runs and worse after it stops; RC direct subs dip, trial conversions bump later. Judge by **RC total paid subs, lagged**, and bound the experiment's share (e.g. subtract the rise in trial conversions) before crediting an ad change.
 
 ## 4. Recommend
 

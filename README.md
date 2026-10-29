@@ -23,8 +23,25 @@ about a campaign). Python 3.9+, standard library only.
 
 ## Data sources
 
-The skill works with CSV exports out of the box. For hands-free pulls, connect both
-official MCP servers.
+The skill works with CSV exports out of the box. For hands-free pulls, use the bundled
+API scripts (no MCP needed) or connect the official MCP servers.
+
+### Google Ads API without MCP (`gads_fetch.py`)
+
+Needs a Google Cloud project with Google Ads API access (Explorer is enough for read-only;
+apply on the project's Google Ads API page) and application-default credentials with the
+`adwords` scope. gcloud's own OAuth client is blocked for that scope, so log in with a
+Desktop OAuth client of your own:
+
+```bash
+gcloud auth application-default login --client-id-file=client_secret.json \
+  --scopes=https://www.googleapis.com/auth/adwords,https://www.googleapis.com/auth/cloud-platform
+export GOOGLE_ADS_CUSTOMER_ID=1234567890 GOOGLE_CLOUD_PROJECT=your-project
+python3 -I $S/gads_fetch.py status
+```
+
+No developer token is needed. Add `GOOGLE_ADS_LOGIN_CUSTOMER_ID` for accounts under a
+manager. 403 "approved for use with test accounts" means the project has no access level yet.
 
 ### Google Ads MCP (read-only)
 
@@ -83,8 +100,18 @@ python3 -I $S/period_compare.py --google timeseries.csv --rc revenuecat.csv \
 python3 -I $S/asset_compare.py --before assets_wk1.csv --before-days 7 --after assets_wk2.csv --after-days 7
 ```
 
+`gads_fetch.py` pulls Google Ads data straight into those CSVs:
+
+```bash
+python3 -I $S/gads_fetch.py daily  --campaign 123 --start 2026-10-01 --end 2026-10-28 --out timeseries.csv
+python3 -I $S/gads_fetch.py assets --campaign 123 --start 2026-10-22 --end 2026-10-28 --out assets_wk2.csv
+python3 -I $S/gads_fetch.py changes --campaign 123 --start 2026-10-01 --end 2026-10-29
+```
+
 `rc_fetch.py` pulls RevenueCat Paid Subscriptions per day for one or more countries
-(`RC_API_KEY=sk_… python3 -I $S/rc_fetch.py --country US --start 2026-09-01 --end 2026-10-20 --out us.csv`).
+(`python3 -I $S/rc_fetch.py --country US --start 2026-09-01 --end 2026-10-20 --out us.csv`).
+The key comes from `$RC_API_KEY`, or on macOS from the Keychain:
+`security add-generic-password -a "$USER" -s RC_API_KEY -w` (prompts for the key).
 
 `period_compare.py` estimates organic subs/day from zero-spend days (override with
 `--organic`) and prints the marginal cost of each extra subscription between periods.
@@ -94,7 +121,7 @@ share — replace first) and WORST/1M assets, and gives P(0) for zero-purchase a
 ## Privacy
 
 Exports contain account data. Keep them out of this repo (`.gitignore` blocks `*.csv`),
-and keep API keys in the environment or MCP config — never in files here.
+and keep API keys in the environment, the macOS Keychain or MCP config — never in files here.
 
 ## Layout
 
@@ -103,5 +130,6 @@ SKILL.md                  workflow Claude follows
 references/playbook.md    decision rules and pitfalls
 references/gaql-queries.md GAQL for each analysis
 references/revenuecat.md  Charts API / MCP usage, experiments
-scripts/                  rc_fetch.py, period_compare.py, asset_compare.py, csvio.py
+scripts/                  gads_fetch.py, rc_fetch.py, rc_funnel.py, rc_experiment.py,
+                          period_compare.py, asset_compare.py, csvio.py
 ```
